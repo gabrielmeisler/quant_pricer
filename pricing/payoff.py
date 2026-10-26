@@ -3,8 +3,6 @@ import numpy as np
 from pricing.path_tracker import validate_barrier_direction
 from pricing.state import PricingState
 
-#TODO: IF A PAYOFF REQUIRES AN AUGMENTED STATE, MAKE IT AUTOMATIC FOR THE OPTION TO INSTERT IT IN REQUIRED STATES
-
 class Payoff(ABC):
     """A payoff function evaluated on a `PricingState` (scalar or array of paths)."""
     
@@ -22,7 +20,7 @@ class Payoff(ABC):
         return {}
     
     @abstractmethod
-    def __call__(self, state: PricingState) -> float:
+    def __call__(self, state: PricingState) -> float | np.ndarray:
         pass
 
 class VanillaPayoff(Payoff):
@@ -43,18 +41,18 @@ class VanillaPayoff(Payoff):
         self.strike = strike
         self.is_call = is_call
 
-    def __call__(self, state: PricingState) -> float:
+    def __call__(self, state: PricingState) -> float | np.ndarray:
         if self.is_call:
             return np.maximum(0.0, state.spot - self.strike)
         return np.maximum(0.0, self.strike - state.spot)
 
 class DigitalPayoff(Payoff):
     """
-    Cash-or-nothing digital: pays `cash_payout` if spot is on the "in the
-    money" side of `strike` at evaluation, otherwise 0.
+    Cash-or-nothing digital. Pays `cash_payout` if spot is on the 
+    in-the-money at evaluation, otherwise 0.
  
     Args:
-        strike: Strike / trigger price. Must be strictly positive.
+        strike: Strike (trigger) price. Must be strictly positive.
         is_call: True pays out when spot >= strike, False when spot <= strike.
         cash_payout: Amount paid out when in the money. Must be non-negative.
  
@@ -70,7 +68,7 @@ class DigitalPayoff(Payoff):
         self.is_call = bool(is_call)
         self.cash_payout = cash_payout
 
-    def __call__(self, state: PricingState) -> float:
+    def __call__(self, state: PricingState) -> float | np.ndarray:
         if self.is_call:
             in_the_money = state.spot >= self.strike
         else:
@@ -79,9 +77,8 @@ class DigitalPayoff(Payoff):
 
 class AsianPayoff(Payoff):
     """
-    Average-price call/put: like `VanillaPayoff` but struck against the
-    running average of spot (via `state.RunningAverage`) rather than the
-    spot itself at evaluation time.
+    Average-price call/put. Like a `VanillaPayoff` but struck against the
+    running average of spot rather than the spot itself at evaluation time.
  
     Args:
         strike: Strike price. Must be strictly positive.
@@ -106,17 +103,16 @@ class AsianPayoff(Payoff):
             'running_average': {}
         }
  
-    def __call__(self, state: PricingState) -> float:
+    def __call__(self, state: PricingState) -> float | np.ndarray:
         avg_price = state.path_state.get_param('running_average')
         if self.is_call:
             return np.maximum(0.0, avg_price - self.strike)
         return np.maximum(0.0, self.strike - avg_price)
 
-# TODO: CHECK Broadie_Glasserman_Kou shift 
 class BarrierPayoff(Payoff):
     """
-    Knock-out vanilla option (discretely monitored): the vanilla payoff, or 0 if
-    the barrier has been hit on any monitoring date.
+    Knock-out vanilla option. The vanilla payoff, or 0 if
+    the barrier has been hit on any monitoring date. 
     
     Args:
         strike: Strike price. Must be strictly positive.
@@ -155,7 +151,7 @@ class BarrierPayoff(Payoff):
             }
         }
     
-    def __call__(self, state: PricingState) -> float:
+    def __call__(self, state: PricingState) -> float | np.ndarray:
         is_knocked = state.path_state.get_param("knock_out")
         intrinsic = self._vanilla(state)
         if np.isscalar(is_knocked):

@@ -8,7 +8,6 @@ _TIME_TOLERANCE = 1e-10
 _GRID_TOLERANCE = 1e-8
 
 def _same_time(t: float, target: float) -> bool:
-    # rtol=0: np.isclose's default rtol (1e-5) would dominate atol.
     return bool(np.isclose(t, target, rtol=0.0, atol=_TIME_TOLERANCE))
 
 class ExerciseRights(ABC):
@@ -27,13 +26,12 @@ class ExerciseRights(ABC):
         """Raise if the rights cannot be represented on a uniform grid of
         `n_steps` steps over [0, maturity]. Default: always representable."""
 
-    
 class EuropeanExercise(ExerciseRights):
     """Exercisable only at maturity."""
         
     def is_exercisable(self, state: PricingState) -> bool:
         """True at maturity, False everywhere else."""
-        return np.isclose(state.time, self.maturity, atol=_TIME_TOLERANCE, rtol=0)
+        return _same_time(t=state.time, target=self.maturity)
 
 class AmericanExercise(ExerciseRights):
     """Exercisable at any time."""
@@ -44,7 +42,7 @@ class AmericanExercise(ExerciseRights):
 
 class BermudanExercise(ExerciseRights):
     """
-    Exercisable at a discrete set of times; maturity is always included.
+    Exercisable at a discrete set of times. Maturity is always included.
 
     Args:
         maturity: final exercise time (> 0).
@@ -74,6 +72,6 @@ class BermudanExercise(ExerciseRights):
             if abs(grid_point - round(grid_point)) > _GRID_TOLERANCE:
                 raise ValueError(
                     f"exercise time {t} is not on the {n_steps}-step grid "
-                    f"(dt={self.maturity / n_steps}); it would never be exercised. "
+                    f"(dt={self.maturity / n_steps}); it would never be exercised."
                     f"Choose n_steps so that every exercise time is a multiple of dt."
                 )

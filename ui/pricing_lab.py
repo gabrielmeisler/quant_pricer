@@ -14,12 +14,11 @@ from pricing.payoff import VanillaPayoff, DigitalPayoff, AsianPayoff, BarrierPay
 from pricing.exercise_rights import EuropeanExercise, AmericanExercise, BermudanExercise
 from pricing.contract import DerivativeContract
 from pricing.stochastic_process import GeometricBrownianMotion
-from pricing.engine import (
-    PricingResult,
-    MonteCarloEngine,
-    BinomialEngine,
-    FiniteDifferenceEngine,
-)
+from pricing.engines.analytical import AnalyticalEngine
+from pricing.engines.base import PricingResult
+from pricing.engines.binomial import BinomialEngine
+from pricing.engines.finte_differences import FiniteDifferenceEngine
+from pricing.engines.monte_carlo import MonteCarloEngine
 
 # Shared helpers used by the interactive builder and pricing workflow.
 
@@ -184,8 +183,9 @@ def render_pricing_lab() -> None:
                 st.session_state[key] = st.session_state.get(
                     f"{key}_saved", value
                 )
-            if key != "builder_stage":
-                st.session_state[f"{key}_input"] = st.session_state[key]
+            input_key = f"{key}_input"
+            if key != "builder_stage" and input_key not in st.session_state:
+                st.session_state[input_key] = st.session_state[key]
 
         def save_builder_setting(key: str) -> None:
             st.session_state[key] = st.session_state[f"{key}_input"]
@@ -212,29 +212,6 @@ def render_pricing_lab() -> None:
         chart_red = "#e08a83" if is_dark else "#a95350"
         chart_gold = "#d2b574" if is_dark else "#a8874a"
         chart_purple = "#b59bc0" if is_dark else "#765a7d"
-        payoff_summary = (
-            f"{st.session_state.builder_payoff_type} · "
-            f"{st.session_state.builder_opt_kind} · "
-            f"S₀ {st.session_state.builder_spot:g} / "
-            f"K {st.session_state.builder_strike:g}"
-        )
-        if st.session_state.builder_payoff_type == "Barrier Knock-Out":
-            payoff_summary += f" · B {st.session_state.builder_barrier:g}"
-        elif st.session_state.builder_payoff_type == "Digital Cash-or-Nothing":
-            payoff_summary += f" · payout {st.session_state.builder_cash:g}"
-
-        exercise_summary = (
-            f"{st.session_state.builder_ex_style} · "
-            f"T {st.session_state.builder_maturity:.2f}y"
-        )
-        if st.session_state.builder_ex_style == "Bermudan":
-            exercise_summary += f" · {st.session_state.builder_berm_freq}"
-
-        market_summary = (
-            f"σ {st.session_state.builder_vol:.0%} · "
-            f"r {st.session_state.builder_r:.1%} · "
-            f"q {st.session_state.builder_q:.1%}"
-        )
         payoff_drawer_type = {
             "Vanilla Payoff": "Vanilla",
             "Digital Cash-or-Nothing": "Digital",
@@ -271,40 +248,6 @@ def render_pricing_lab() -> None:
             f"**Dividend yield**  \n{st.session_state.builder_q:.1%}",
         ]
         market_drawer_summary = "\n\n".join(market_drawer_terms)
-
-        mobile_stage_names = ["01 · Payoff", "02 · Exercise", "03 · Market"]
-        st.session_state.builder_mobile_stage = builder_stage
-
-        def select_mobile_builder_stage():
-            save_builder_settings()
-            st.session_state.builder_stage = st.session_state.builder_mobile_stage
-
-        with st.container(key="builder-mobile-stage"):
-            st.radio(
-                "Contract stage",
-                list(range(builder_max_stage + 1)),
-                format_func=lambda stage: mobile_stage_names[stage],
-                horizontal=True,
-                label_visibility="collapsed",
-                key="builder_mobile_stage",
-                on_change=select_mobile_builder_stage,
-            )
-
-        mobile_summaries = []
-        if builder_max_stage >= 1 and builder_stage != 0:
-            mobile_summaries.append(f"Payoff: {payoff_summary}")
-        if builder_max_stage >= 1 and builder_stage != 1:
-            mobile_summaries.append(f"Exercise: {exercise_summary}")
-        if builder_max_stage >= 2 and builder_stage != 2:
-            mobile_summaries.append(f"Market: {market_summary}")
-        with st.container(key="builder-mobile-summary"):
-            if mobile_summaries:
-                st.markdown(
-                    '<div class="builder-mobile-summary">'
-                    + " &nbsp; · &nbsp; ".join(mobile_summaries)
-                    + "</div>",
-                    unsafe_allow_html=True,
-                )
 
         payoff_type = st.session_state.builder_payoff_type
         option_kind = st.session_state.builder_opt_kind
@@ -410,14 +353,14 @@ def render_pricing_lab() -> None:
                 )
                 with payoff_reference_controls[0]:
                     spot_price = st.number_input(
-                        "Spot ($S_0$)", value=100.0, min_value=1.0, step=1.0,
+                    "Spot ($S_0$)", min_value=1.0, step=1.0,
                         key="builder_spot_input",
                         on_change=save_builder_setting,
                         args=("builder_spot",),
                     )
                 with payoff_reference_controls[1]:
                     strike_price = st.number_input(
-                        "Strike ($K$)", value=100.0, min_value=1.0, step=1.0,
+                    "Strike ($K$)", min_value=1.0, step=1.0,
                         key="builder_strike_input",
                         on_change=save_builder_setting,
                         args=("builder_strike",),
@@ -425,7 +368,7 @@ def render_pricing_lab() -> None:
                 if payoff_type == "Barrier Knock-Out":
                     with payoff_reference_controls[2]:
                         barrier_level = st.number_input(
-                            "Barrier ($B$)", value=120.0, min_value=1.0, step=1.0,
+                        "Barrier ($B$)", min_value=1.0, step=1.0,
                             key="builder_barrier_input",
                             on_change=save_builder_setting,
                             args=("builder_barrier",),
@@ -433,7 +376,7 @@ def render_pricing_lab() -> None:
                 elif payoff_type == "Digital Cash-or-Nothing":
                     with payoff_reference_controls[2]:
                         cash_payout = st.number_input(
-                            "Payout ($)", value=10.0, min_value=0.1, step=1.0,
+                        "Payout ($)", min_value=0.1, step=1.0,
                             key="builder_cash_input",
                             on_change=save_builder_setting,
                             args=("builder_cash",),
@@ -635,7 +578,7 @@ def render_pricing_lab() -> None:
                 with exercise_controls[0]:
                     maturity = st.number_input(
                         "Maturity (years)", min_value=0.1, max_value=10.0,
-                        value=1.0, step=0.25, key="builder_maturity_input",
+                        step=0.25, key="builder_maturity_input",
                         on_change=save_builder_setting,
                         args=("builder_maturity",),
                     )
@@ -688,6 +631,16 @@ def render_pricing_lab() -> None:
                         showlegend=False,
                     )
                 )
+                if exercise_type == "American":
+                    fig_exercise.add_trace(
+                        go.Scatter(
+                            x=[0, maturity], y=[0, 0],
+                            mode="lines",
+                            line={"color": chart_primary, "width": 4},
+                            name="Exercise any time",
+                            hovertemplate="Exercise permitted throughout [0, T]<extra></extra>",
+                        )
+                    )
                 fig_exercise.add_trace(
                     go.Scatter(
                         x=[0], y=[0],
@@ -697,30 +650,16 @@ def render_pricing_lab() -> None:
                         hovertemplate="t = %{x:.2f} years<extra></extra>",
                     )
                 )
-                maturity_is_exercise_date = exercise_type in {
-                    "European",
-                    "Bermudan",
-                }
                 fig_exercise.add_trace(
                     go.Scatter(
                         x=[maturity], y=[0],
                         mode="markers",
                         marker={
-                            "color": (
-                                chart_primary if exercise_type == "European"
-                                else chart_gold if exercise_type == "Bermudan"
-                                else chart_grid
-                            ),
+                            "color": chart_primary,
                             "size": 8,
-                            "symbol": (
-                                "diamond" if exercise_type == "Bermudan"
-                                else "circle"
-                            ),
+                            "symbol": "circle",
                         },
-                        name=(
-                            "Maturity / exercise date"
-                            if maturity_is_exercise_date else "Maturity"
-                        ),
+                        name="Maturity",
                         hovertemplate="t = %{x:.2f} years<extra></extra>",
                     )
                 )
@@ -744,17 +683,7 @@ def render_pricing_lab() -> None:
                     yshift=14,
                     font={"color": chart_text, "size": 10},
                 )
-                if exercise_type == "American":
-                    fig_exercise.add_trace(
-                        go.Scatter(
-                            x=[0, maturity], y=[0, 0],
-                            mode="lines",
-                            line={"color": chart_primary, "width": 4},
-                            name="Exercise any time",
-                            hovertemplate="Exercise permitted throughout [0, T]<extra></extra>",
-                        )
-                    )
-                elif len(exercise_dates):
+                if exercise_type == "Bermudan" and len(exercise_dates):
                     displayed_exercise_dates = (
                         exercise_dates[
                             ~np.isclose(
@@ -775,8 +704,8 @@ def render_pricing_lab() -> None:
                                 mode="markers",
                                 marker={
                                     "color": chart_gold,
-                                    "size": 8,
-                                    "symbol": "diamond",
+                                    "size": 10,
+                                    "symbol": "star",
                                 },
                                 name="Permitted exercise dates",
                                 hovertemplate="Exercise at t = %{x:.2f} years<extra></extra>",
@@ -923,21 +852,21 @@ def render_pricing_lab() -> None:
                 market_inputs = st.columns(3)
                 with market_inputs[0]:
                     volatility = st.number_input(
-                        "Volatility (σ)", value=0.20, min_value=0.01, max_value=2.0,
+                        "Volatility (σ)", min_value=0.01, max_value=2.0,
                         step=0.01, key="builder_vol_input",
                         on_change=save_builder_setting,
                         args=("builder_vol",),
                     )
                 with market_inputs[1]:
                     risk_free = st.number_input(
-                        "Risk-free rate (r)", value=0.05, min_value=-0.10, max_value=0.50,
+                        "Risk-free rate (r)", min_value=-0.10, max_value=0.50,
                         step=0.01, key="builder_r_input",
                         on_change=save_builder_setting,
                         args=("builder_r",),
                     )
                 with market_inputs[2]:
                     dividend_yield = st.number_input(
-                        "Dividend yield (q)", value=0.01, min_value=0.0, max_value=0.50,
+                        "Dividend yield (q)", min_value=0.0, max_value=0.50,
                         step=0.01, key="builder_q_input",
                         on_change=save_builder_setting,
                         args=("builder_q",),
@@ -1547,6 +1476,23 @@ def render_pricing_lab() -> None:
         all_runs = st.session_state.valuation_runs
         for run_index, record in enumerate(all_runs):
             record.setdefault("run_name", f"Pricing {run_index + 1}")
+        black_scholes_result: PricingResult | None = None
+        black_scholes_supported = (
+            pricing_ready
+            and exercise_type == "European"
+            and payoff_type in ("Vanilla Payoff", "Digital Cash-or-Nothing")
+        )
+        if black_scholes_supported:
+            contract, _, _ = make_pricing_contract()
+            black_scholes_result = AnalyticalEngine().price(
+                derivative=contract,
+                process=GeometricBrownianMotion(volatility=volatility),
+                initial_spot=spot_price,
+                market_data=MarketData(
+                    risk_free_rate=risk_free,
+                    dividend_yield=dividend_yield,
+                ),
+            )
         reference_run_id = st.session_state.get("valuation_reference_run_id")
         reference_index = next(
             (
@@ -1633,10 +1579,16 @@ def render_pricing_lab() -> None:
             """,
             unsafe_allow_html=True,
         )
-        if all_runs:
-            reference_record = all_runs[reference_index]
-            reference_price = reference_record["result"].price
+        if all_runs or black_scholes_result is not None:
+            reference_record = all_runs[reference_index] if all_runs else None
+            reference_price = (
+                black_scholes_result.price
+                if black_scholes_result is not None
+                else reference_record["result"].price
+            )
             run_prices = [record["result"].price for record in all_runs]
+            if black_scholes_result is not None:
+                run_prices.append(black_scholes_result.price)
             lowest_price = min(run_prices)
             highest_price = max(run_prices)
             price_spread = highest_price - lowest_price
@@ -1645,16 +1597,38 @@ def render_pricing_lab() -> None:
                 if reference_price != 0
                 else None
             )
-            fastest_record = min(
-                all_runs, key=lambda record: record["result"].runtime
+            fastest_record = (
+                min(all_runs, key=lambda record: record["result"].runtime)
+                if all_runs
+                else None
             )
-            spread_detail = (
-                f"Difference ${price_spread:.4f} "
-                f"({spread_percent:.2f}%) · {len(all_runs)} pricing runs"
-                if spread_percent is not None
-                else f"Difference ${price_spread:.4f} · "
-                f"{len(all_runs)} pricing runs"
-            )
+            if black_scholes_result is not None:
+                spread_detail = (
+                    "Black–Scholes reference only"
+                    if not all_runs
+                    else (
+                        f"Black–Scholes + {len(all_runs)} numerical run(s) · "
+                        f"difference ${price_spread:.4f}"
+                        + (
+                            f" ({spread_percent:.2f}%)"
+                            if spread_percent is not None
+                            else ""
+                        )
+                    )
+                )
+                reference_detail = "European Black–Scholes analytical value"
+            else:
+                spread_detail = (
+                    f"Difference ${price_spread:.4f} "
+                    f"({spread_percent:.2f}%) · {len(all_runs)} pricing runs"
+                    if spread_percent is not None
+                    else f"Difference ${price_spread:.4f} · "
+                    f"{len(all_runs)} pricing runs"
+                )
+                reference_detail = (
+                    f"{reference_record['run_name']} · "
+                    f"{reference_record['engine_name']}"
+                )
             price_range_label = (
                 f"${lowest_price:.4f}"
                 if lowest_price == highest_price
@@ -1665,8 +1639,7 @@ def render_pricing_lab() -> None:
                 (
                     "Reference price",
                     f"${reference_price:.4f}",
-                    f"{reference_record['run_name']} · "
-                    f"{reference_record['engine_name']}",
+                    reference_detail,
                 ),
                 (
                     "Price range",
@@ -1675,9 +1648,17 @@ def render_pricing_lab() -> None:
                 ),
                 (
                     "Fastest runtime",
-                    f"{fastest_record['result'].runtime * 1000:.2f} ms",
-                    f"{fastest_record['run_name']} · "
-                    f"{fastest_record['engine_name']}",
+                    (
+                        f"{fastest_record['result'].runtime * 1000:.2f} ms"
+                        if fastest_record is not None
+                        else "—"
+                    ),
+                    (
+                        f"{fastest_record['run_name']} · "
+                        f"{fastest_record['engine_name']}"
+                        if fastest_record is not None
+                        else "Run a numerical method to compare"
+                    ),
                 ),
             )
             for column_index, (column, (label, value, detail)) in enumerate(
@@ -1713,7 +1694,7 @@ def render_pricing_lab() -> None:
                         """,
                         unsafe_allow_html=True,
                     )
-        else:
+        if not all_runs:
             prompt_column, action_column = st.columns(
                 [5, 1], vertical_alignment="center", gap="small"
             )
@@ -2322,7 +2303,7 @@ def render_pricing_lab() -> None:
                     '<div style="margin:0 0 10px;">'
                     f'<div style="color:{overview_ink};'
                     'font:500 1.05rem/1.3 Inter,system-ui,sans-serif;'
-                    'letter-spacing:-0.01em;">Engine comparison</div>'
+                    'letter-spacing:-0.01em;">Pricing comparison</div>'
                     '</div>',
                     unsafe_allow_html=True,
                 )
@@ -2339,7 +2320,31 @@ def render_pricing_lab() -> None:
             comparison_rows = []
             comparison_engine_styles = []
             family_occurrences = {}
-            reference_price = all_runs[reference_index]["result"].price
+            reference_price = (
+                black_scholes_result.price
+                if black_scholes_result is not None
+                else all_runs[reference_index]["result"].price
+            )
+            if black_scholes_result is not None:
+                comparison_rows.append(
+                    {
+                        "Run": "Black–Scholes",
+                        "Role": "Reference",
+                        "Engine": "Black–Scholes",
+                        "Configuration": "Closed-form European value",
+                        "Price": f"${black_scholes_result.price:.4f}",
+                        "Δ vs reference": "—",
+                        "Runtime": (
+                            f"{black_scholes_result.runtime * 1000:.2f} ms"
+                        ),
+                    }
+                )
+                comparison_engine_styles.append(
+                    (overview_accent, overview_accent)
+                )
+            reference_row_index = (
+                0 if black_scholes_result is not None else reference_index
+            )
             for run_index, record in enumerate(all_runs):
                 family = engine_color_family(record["engine_name"])
                 occurrence = family_occurrences.get(family, 0)
@@ -2359,16 +2364,23 @@ def render_pricing_lab() -> None:
                     {
                         "Run": record["run_name"],
                         "Role": (
-                            "Reference"
-                            if run_index == reference_index
-                            else "Comparison"
+                            "Comparison"
+                            if black_scholes_result is not None
+                            else (
+                                "Reference"
+                                if run_index == reference_index
+                                else "Comparison"
+                            )
                         ),
                         "Engine": record["engine_name"],
                         "Configuration": record["settings_label"],
                         "Price": f"${result.price:.4f}",
                         "Δ vs reference": (
                             "—"
-                            if run_index == reference_index
+                            if (
+                                black_scholes_result is None
+                                and run_index == reference_index
+                            )
                             else (
                                 f"${reference_delta:+.4f} "
                                 f"({reference_delta_percent:+.2f}%)"
@@ -2386,7 +2398,8 @@ def render_pricing_lab() -> None:
             table_rule = "#363c46" if is_dark else "#dfe5e9"
             selected_surface = "#263c39" if is_dark else "#e8f2f1"
             table_html = [
-                '<div style="overflow:hidden;'
+                '<div class="valuation-comparison-table-scroll" '
+                'style="overflow:hidden;'
                 f'border:1px solid {table_rule};border-radius:10px;'
                 f'background:{table_surface};">',
                 '<table style="width:100%;table-layout:fixed;'
@@ -2411,10 +2424,10 @@ def render_pricing_lab() -> None:
             table_html.append("</tr></thead><tbody>")
             for row_index, row in enumerate(comparison_rows):
                 row_surface = (
-                    selected_surface if row_index == reference_index
+                    selected_surface if row_index == reference_row_index
                     else table_surface
                 )
-                row_weight = "600" if row_index == reference_index else "400"
+                row_weight = "600" if row_index == reference_row_index else "400"
                 table_html.append("<tr>")
                 for column_index, value in enumerate(row.values()):
                     cell_color = table_ink
@@ -2438,25 +2451,26 @@ def render_pricing_lab() -> None:
                     )
                 table_html.append("</tr>")
             table_html.append("</tbody></table></div>")
-            for row_index in range(len(all_runs)):
-                table_html.append(
-                    f"<style>.st-key-valuation-comparison-surface "
-                    f".st-key-valuation_reference_row_{row_index} {{"
-                    f"top:{39.5 + 41.375 * row_index}px !important;"
-                    "left:0 !important;width:100% !important;"
-                    "height:41.375px !important;}</style>"
-                )
+            if black_scholes_result is None:
+                for row_index in range(len(all_runs)):
+                    table_html.append(
+                        f"<style>.st-key-valuation-comparison-surface "
+                        f".st-key-valuation_reference_row_{row_index} {{"
+                        f"top:{39.5 + 41.375 * row_index}px !important;"
+                        "left:0 !important;width:100% !important;"
+                        "height:41.375px !important;}</style>"
+                    )
             with st.container(key="valuation-comparison-surface"):
                 st.markdown("".join(table_html), unsafe_allow_html=True)
-                for row_index, record in enumerate(all_runs):
-                    st.button(
-                        f"Set {record['run_name']} as reference",
-                        key=f"valuation_reference_row_{row_index}",
-                        on_click=lambda run_id=record["id"]: st.session_state.update(
-                            {"valuation_reference_run_id": run_id}
-                        ),
-                    )
+                if black_scholes_result is None:
+                    for row_index, record in enumerate(all_runs):
+                        st.button(
+                            f"Set {record['run_name']} as reference",
+                            key=f"valuation_reference_row_{row_index}",
+                            on_click=lambda run_id=record["id"]: st.session_state.update(
+                                {"valuation_reference_run_id": run_id}
+                            ),
+                        )
             st.markdown('<div style="height:12px"></div>', unsafe_allow_html=True)
 
         st.stop()
-# This route is intentionally a placeholder until theory content is ready.

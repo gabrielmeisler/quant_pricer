@@ -5,12 +5,13 @@ from pricing.path_tracker import PathFeatureTracker, collect_trackers_by_name
 
 class DerivativeContract:
     """
-    A derivative defined by its payoff and exercise rights. Trackers required by
-    the payoff are instantiated once, at construction.
+    A derivative defined by its payoff and exercise rights. Path trackers required by 
+    the payoff are automatically validated against registered trackers and instantiated 
+    once at construction time.
 
     Args:
-        payoff: payoff function (declares required trackers and their configs).
-        exercise_rights: exercise rights (define maturity).
+        payoff (Payoff): The payoff function that declares required trackers and configs.
+        exercise_rights (ExerciseRights): The exercise rights that define maturity and exercise rules.
     """
 
     def __init__(self, payoff: Payoff, exercise_rights: ExerciseRights):        

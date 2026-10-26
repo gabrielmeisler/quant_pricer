@@ -16,7 +16,6 @@ class PathFeatureTracker(ABC):
     and `update` it accordingly, storing the result in `PathDependentState.params` under `name`.
     """
 
-    ### TODO: UNDERSTAND BETTER THE _REGISTRY CODE
     name: str
     _registry: ClassVar[dict[str, type[PathFeatureTracker]]] = {}
     def __init_subclass__(cls, **kwargs):
@@ -99,8 +98,8 @@ class KnockOutStatus(PathFeatureTracker):
  
     def _breached(self, current_state: UnderlyingState) -> bool:
         if self.direction == 'up':
-            return self.barrier_level < current_state.spot
-        return self.barrier_level > current_state.spot
+            return self.barrier_level <= current_state.spot
+        return self.barrier_level >= current_state.spot
  
     def initialize(self, initial_underlying_state: UnderlyingState) -> bool:
         return self._breached(initial_underlying_state)
@@ -111,7 +110,7 @@ class KnockOutStatus(PathFeatureTracker):
 
 def collect_trackers_by_name(names: set[str], 
                              tracker_params: dict[str, dict[str, Any]] | None = None
-                             ) -> PathFeatureTracker | None:
+                             ) -> list[PathFeatureTracker]:
     """Instantiate the registered trackers `names`, using `tracker_params[name]`
         as constructor kwargs (empty if absent)."""
     tracker_params = tracker_params or {}

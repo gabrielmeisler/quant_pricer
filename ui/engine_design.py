@@ -102,7 +102,7 @@ def render_engine_design() -> None:
         </div>
         <div>
           <strong style="color:{intro_text};">03</strong>
-          <span style="margin-left:8px;color:{intro_muted};">exercise schedules types</span>
+          <span style="margin-left:8px;color:{intro_muted};">exercise-rights types</span>
         </div>
       </div>
     </div>
@@ -378,13 +378,18 @@ def render_engine_design() -> None:
             'FiniteDifferenceEngine(n_space=200, n_time=200, theta=0.5, grid_type="log")',
         ),
     }
+    engine_modules = {
+        "MonteCarloEngine": "monte_carlo",
+        "BinomialEngine": "binomial",
+        "FiniteDifferenceEngine": "finte_differences",
+    }
 
     original_quick_start = """from pricing.contract import DerivativeContract
 from pricing.exercise_rights import AmericanExercise
 from pricing.markets import MarketData
 from pricing.payoff import VanillaPayoff
 from pricing.stochastic_process import GeometricBrownianMotion
-from pricing.engine import MonteCarloEngine
+from pricing.engines.monte_carlo import MonteCarloEngine
 
 payoff = VanillaPayoff(strike=100.0, is_call=False)
 exercise = AmericanExercise(maturity=1.0)
@@ -430,7 +435,7 @@ print(f"Price: {result.price:.4f} (±{result.std_error:.4f})")"""
             "exercise = AmericanExercise(maturity=1.0)",
         ),
         "Pricing engine": (
-            "from pricing.engine import MonteCarloEngine",
+            "from pricing.engines.monte_carlo import MonteCarloEngine",
             "engine = MonteCarloEngine(n_paths=10000, n_steps=100, seed=42)",
         ),
     }
@@ -444,7 +449,7 @@ print(f"Price: {result.price:.4f} (±{result.std_error:.4f})")"""
             f"exercise = {exercise_expression}",
         ),
         "Pricing engine": (
-            f"from pricing.engine import {engine_class}",
+            f"from pricing.engines.{engine_modules[engine_class]} import {engine_class}",
             f"engine = {engine_expression}",
         ),
     }
@@ -747,6 +752,13 @@ print(f"Price: {result.price:.4f} (±{result.std_error:.4f})")"""
     )
     package_root = Path(__file__).resolve().parent.parent
     source_modules = (
+        "ui/application.py",
+        "ui/home.py",
+        "ui/navigation.py",
+        "ui/theme.py",
+        "ui/pricing_lab.py",
+        "ui/engine_design.py",
+        "ui/applied_theory.py",
         "pricing/contract.py",
         "pricing/payoff.py",
         "pricing/exercise_rights.py",
@@ -754,7 +766,11 @@ print(f"Price: {result.price:.4f} (±{result.std_error:.4f})")"""
         "pricing/stochastic_process.py",
         "pricing/state.py",
         "pricing/path_tracker.py",
-        "pricing/engine.py",
+        "pricing/engines/base.py",
+        "pricing/engines/analytical.py",
+        "pricing/engines/monte_carlo.py",
+        "pricing/engines/binomial.py",
+        "pricing/engines/finte_differences.py",
     )
     source_file_column, source_component_column = st.columns(
         [1, 1], gap="medium", vertical_alignment="bottom"
@@ -763,35 +779,18 @@ print(f"Price: {result.price:.4f} (±{result.std_error:.4f})")"""
         source_file = st.selectbox(
             "Source file",
             source_modules,
-            key="engine_design_source_file",
+            key="engine_design_source_file_v2",
         )
     source_text = (package_root / source_file).read_text(encoding="utf-8")
     source_tree = ast.parse(source_text, filename=source_file)
-    if source_file == "app.py":
-        featured_components = [
-            "make_pricing_contract",
-            "price_with_settings",
-            "render_engine_settings",
-            "describe_engine_settings",
-        ]
-        source_components = [
-            node
-            for node in ast.walk(source_tree)
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-            and node.name in featured_components
-        ]
-        source_components.sort(
-            key=lambda node: featured_components.index(node.name)
+    source_components = [
+        node
+        for node in source_tree.body
+        if isinstance(
+            node,
+            (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef),
         )
-    else:
-        source_components = [
-            node
-            for node in source_tree.body
-            if isinstance(
-                node,
-                (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef),
-            )
-        ]
+    ]
     if not source_components:
         raise RuntimeError(f"No browsable code components found in {source_file}.")
 

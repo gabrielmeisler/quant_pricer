@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from dataclasses import replace
-
 from typing import Any
 from pricing.state import UnderlyingState
 from pricing.markets import MarketData
@@ -52,17 +51,17 @@ class GeometricBrownianMotion(StochasticProcess):
         )
 
     def simulate_paths(self, initial_spot: float, maturity: float, n_steps: int,
-                           n_paths: int, market_data: MarketData,
-                           seed: int | None = None) -> list[UnderlyingState]:
-            times = np.linspace(0.0, maturity, n_steps + 1)  # no float drift on dates
-            dt = maturity / n_steps
-            rng = np.random.default_rng(seed)
-    
-            state = UnderlyingState(time=0.0, spot=np.full(n_paths, float(initial_spot)))
-            history = [state]
-            for k in range(n_steps):
-                z = rng.normal(size=n_paths)
-                nxt = self.simulation_step(state, dt, z, market_data)
-                state = replace(nxt, time=float(times[k + 1]))
-                history.append(state)
-            return history
+                        n_paths: int, market_data: MarketData,
+                        seed: int | None = None) -> list[UnderlyingState]:
+        times = np.linspace(0.0, maturity, n_steps + 1)  
+        dt = maturity / n_steps
+        rng = np.random.default_rng(seed)
+
+        state = UnderlyingState(time=0.0, spot=np.full(n_paths, float(initial_spot)))
+        history = [state]
+        for k in range(n_steps):
+            z = rng.normal(size=n_paths)
+            nxt = self.simulation_step(state, dt, z, market_data)
+            state = replace(nxt, time=float(times[k + 1]))
+            history.append(state)
+        return history

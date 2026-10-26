@@ -1,24 +1,26 @@
 from dataclasses import dataclass, field
 import numpy as np
-
+from typing import Any
 
 @dataclass(frozen=True)
 class UnderlyingState:
     """
-        A generic current state representation of a derivative's underlying.
-    
-        Args:
-            time: Time since inception, in years. Must be non-negative.
-            spot: Underlying price (scalar or array of paths for MC simulation). 
-            Must be non-negative.
-            extra_params: Optional additional model parameters (e.g. the
-                instantaneous variance under the Heston model).
-    
-        Raises:
-            ValueError: if `time` or `spot` are negative.
-        """
+    A generic current state representation of a derivative's underlying.
+
+    Args:
+        time: Time since inception, in years. Must be non-negative.
+        spot: Underlying price (scalar or array of paths for MC simulation). 
+        Must be non-negative.
+        extra_params: Optional additional model parameters (e.g. the
+            instantaneous variance under the Heston model. The Heston
+            model is not yet implemented, but it is intended as an expansion 
+            for future developments).
+
+    Raises:
+        ValueError: if `time` or `spot` are negative.
+    """
     time: float
-    spot: float
+    spot: float | np.ndarray
     extra_params: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self):
@@ -56,7 +58,7 @@ class PathDependentState:
         params: Mapping from a `PathFeatureTracker.name` to its current value
             (scalar, or array across paths).
     """
-    params: dict[str, float] = field(default_factory=dict)
+    params: dict[str, Any] = field(default_factory=dict)
 
     def get_param(self, name: str) -> float:
         """
@@ -74,7 +76,6 @@ class PathDependentState:
             raise KeyError(
                 f"PathDependentState instance does not contain param '{name}'. "
                 f"Available params are: {list(self.params.keys())}. "
-                f"Did you forget to include the corresponding PathFeatureTracker in the Option's required_states?"
             )
 
 @dataclass(frozen=True)

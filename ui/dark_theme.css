@@ -290,6 +290,189 @@
         border-left-color: #82c5b8 !important;
     }
 
+    .st-key-theory-article-directory .theory-directory-title {
+        color: #e0e4e8 !important;
+    }
+
+    .landing-contact {
+        background: #222a29 !important;
+        border-color: #3b4946 !important;
+    }
+
+    .landing-contact-title,
+    .landing-footer-links a,
+    .landing-contact-email {
+        color: #a2bcb7 !important;
+    }
+
+    .landing-footer-links a,
+    .landing-contact-email {
+        background: #29312f !important;
+        border-color: #3b4946 !important;
+    }
+
+    .landing-footer-links a:hover {
+        background: #333e3b !important;
+    }
+
+    [class*="st-key-theory-article-row-"] {
+        border-bottom-color: #343a42 !important;
+    }
+
+    [class*="st-key-theory-article-row-"]:hover {
+        background: #20252a !important;
+    }
+
+    [class*="st-key-theory-article-row-"] button {
+        color: #d0d5da !important;
+    }
+
+    [class*="st-key-theory-article-row-"] button:not(:disabled):hover p {
+        color: #91cfc2 !important;
+    }
+
+    [class*="st-key-theory-article-row-"] [data-testid="stCaptionContainer"],
+    .theory-article-status {
+        color: #9da7b2 !important;
+    }
+
+    .theory-article-coming {
+        color: #7f8993 !important;
+        font-weight: 450 !important;
+    }
+
+    [class*="st-key-theory-article-row-"]:has(.theory-article-coming) button:disabled p {
+        color: #89939d !important;
+        font-weight: 400 !important;
+    }
+
+    .st-key-applied-theory-page [data-testid="stExpander"] {
+        border-color: #343a42 !important;
+        background: #191c22 !important;
+    }
+
+    .st-key-applied-theory-page [data-testid="stExpander"] summary,
+    .theory-article-topic {
+        color: #91cfc2 !important;
+    }
+
+    .st-key-applied-theory-page h2 {
+        border-top-color: #343a42;
+        color: #e0e4e8 !important;
+    }
+
+    .st-key-applied-theory-page h3 {
+        color: #b9d2d3 !important;
+    }
+
+    .st-key-theory-european-call .theory-contract-title,
+    .theory-european-title {
+        color: #91cfc2 !important;
+    }
+
+    .st-key-theory-american-call .theory-contract-title,
+    .theory-american-title {
+        color: #c1a7ca !important;
+    }
+
+    .st-key-theory-european-call .theory-exercise-term,
+    .st-key-theory-european-call .theory-exercise-term small,
+    .theory-european-accent,
+    .theory-european-accent small {
+        color: #91cfc2 !important;
+    }
+
+    .st-key-theory-american-call .theory-exercise-term,
+    .st-key-theory-american-call .theory-exercise-term small,
+    .theory-american-accent,
+    .theory-american-accent small {
+        color: #c1a7ca !important;
+    }
+
+    .st-key-applied-theory-page .theory-dividend-highlight {
+        background: #203b38 !important;
+        color: #91cfc2 !important;
+    }
+
+    .theory-contract-terms span,
+    .theory-price-value {
+        color: #e6e7e9 !important;
+    }
+
+    .theory-contract-terms small,
+    .theory-price-label,
+    .theory-price-error,
+    .theory-price-interval {
+        color: #9da7b2 !important;
+    }
+
+    .theory-price-result {
+        background: #20252a !important;
+        border-left-color: #31564e !important;
+    }
+
+    .st-key-theory-american-call .theory-price-result,
+    .st-key-theory-dividend-american-call .theory-price-result,
+    .st-key-theory-put-american-put .theory-price-result {
+        border-left-color: #594c61 !important;
+    }
+
+    .st-key-theory-european-call-price button[data-testid="stBaseButton-secondary"],
+    .st-key-theory-dividend-european-call-price button[data-testid="stBaseButton-secondary"],
+    .st-key-theory-put-european-put-price button[data-testid="stBaseButton-secondary"] {
+        border-color: #31564e !important;
+        background: #1d302c !important;
+        color: #91cfc2 !important;
+    }
+
+    .st-key-theory-american-call-price button[data-testid="stBaseButton-secondary"],
+    .st-key-theory-dividend-american-call-price button[data-testid="stBaseButton-secondary"],
+    .st-key-theory-put-american-put-price button[data-testid="stBaseButton-secondary"] {
+        border-color: #594c61 !important;
+        background: #302836 !important;
+        color: #c1a7ca !important;
+    }
+
+    .st-key-theory-european-call-price button[data-testid="stBaseButton-secondary"] p,
+    .st-key-theory-american-call-price button[data-testid="stBaseButton-secondary"] p,
+    .st-key-theory-dividend-european-call-price button[data-testid="stBaseButton-secondary"] p,
+    .st-key-theory-dividend-american-call-price button[data-testid="stBaseButton-secondary"] p,
+    .st-key-theory-put-european-put-price button[data-testid="stBaseButton-secondary"] p,
+    .st-key-theory-put-american-put-price button[data-testid="stBaseButton-secondary"] p {
+        color: inherit !important;
+    }
+
+    .st-key-theory-european-call-price button[data-testid="stBaseButton-secondary"]:hover {
+        border-color: #82c5b8 !important;
+        background: #263c37 !important;
+    }
+
+    .st-key-theory-dividend-european-call-price button[data-testid="stBaseButton-secondary"]:hover,
+    .st-key-theory-put-european-put-price button[data-testid="stBaseButton-secondary"]:hover {
+        border-color: #82c5b8 !important;
+        background: #263c37 !important;
+    }
+
+    .st-key-theory-american-call-price button[data-testid="stBaseButton-secondary"]:hover {
+        border-color: #c1a7ca !important;
+        background: #3a3040 !important;
+    }
+
+    .st-key-theory-dividend-american-call-price button[data-testid="stBaseButton-secondary"]:hover,
+    .st-key-theory-put-american-put-price button[data-testid="stBaseButton-secondary"]:hover {
+        border-color: #c1a7ca !important;
+        background: #3a3040 !important;
+    }
+
+    .st-key-theory-european-call-price button[data-testid="stBaseButton-secondary"]:focus-visible,
+    .st-key-theory-american-call-price button[data-testid="stBaseButton-secondary"]:focus-visible,
+    .st-key-theory-dividend-european-call-price button[data-testid="stBaseButton-secondary"]:focus-visible,
+    .st-key-theory-dividend-american-call-price button[data-testid="stBaseButton-secondary"]:focus-visible,
+    .st-key-theory-put-european-put-price button[data-testid="stBaseButton-secondary"]:focus-visible,
+    .st-key-theory-put-american-put-price button[data-testid="stBaseButton-secondary"]:focus-visible {
+        outline-color: #82c5b8 !important;
+    }
+
     .st-key-builder-payoff-plot-full,
     .st-key-builder-payoff-plot-compact,
     .st-key-builder-payoff-plot-tiny,
@@ -732,22 +915,6 @@
 
     .interactive-lab-heading {
         color: #e9e9e7 !important;
-    }
-
-    .st-key-builder-mobile-stage div[role="radiogroup"] label {
-        border-color: #393d47;
-        background: #1b1e25;
-        color: #c2c5ca !important;
-    }
-
-    .st-key-builder-mobile-stage div[role="radiogroup"] label[data-selected="true"] {
-        border-color: #82c5b8;
-        background: #1d302c;
-        color: #91cfc2 !important;
-    }
-
-    .st-key-builder-mobile-summary {
-        color: #aeb3bb !important;
     }
 
     .st-key-valuation_add_pricing {

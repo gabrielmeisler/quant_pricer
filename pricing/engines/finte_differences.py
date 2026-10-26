@@ -1,233 +1,41 @@
+"""Theta-scheme finite-difference engine for the Black-Scholes PDE."""
 from __future__ import annotations
-
+ 
 import numbers
 import time
-from abc import ABC, abstractmethod
-from collections.abc import Callable
-from dataclasses import dataclass, field
+from functools import partial
 from typing import Any
+ 
 import numpy as np
-
+ 
 from pricing.contract import DerivativeContract
+from pricing.engines.base import PricingEngine, PricingResult
 from pricing.exercise_rights import AmericanExercise, BermudanExercise
 from pricing.markets import MarketData
-from pricing.path_tracker import build_pricing_path
 from pricing.payoff import VanillaPayoff
-from pricing.state import PricingState, PathDependentState, PricingState, UnderlyingState
+from pricing.state import PathDependentState, PricingState, UnderlyingState
 from pricing.stochastic_process import GeometricBrownianMotion, StochasticProcess
-
-
-@dataclass(frozen=True)
-class PricingResult:
-    """Output of an engine: a price with its uncertainty and diagnostics."""
-    price: float
-    std_error: float | None = None      # None for deterministic engines
-    runtime: float = 0.0                # seconds
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-    @property
-    def ci95(self) -> tuple[float, float] | None:
-        if self.std_error is None:
-            return None
-        return (self.price - 1.96 * self.std_error, self.price + 1.96 * self.std_error)
-
-    def __float__(self) -> float:
-        return float(self.price)
-    
-
-class PricingEngine(ABC):
-    """Common interface for all pricing engines."""
-
-    def check_supported(self, derivative: DerivativeContract,
-                        process: StochasticProcess) -> None:
-        """Raise NotImplementedError for (derivative, process) pairs the engine
-        cannot price correctly. Default: everything is supported."""
-
-    @abstractmethod
-    def price(self, derivative: DerivativeContract, process: StochasticProcess,
-              initial_spot: float, market_data: MarketData) -> PricingResult:
-        """Return the present value of `derivative` under `process`/`market_data`."""
-
-
-def polynomial_basis(degree: int) -> Callable[[PricingState, np.ndarray, float], np.ndarray]:
-    """
-    Default LSM regression basis: polynomial of degree `degree` in x = S/S0,
-    plus (a, a^2, a*x) for every continuous path feature `a` (normalised by S0),
-    e.g. the running average of an Asian option. Boolean features (knock-out
-    flags) are skipped: knocked paths have zero payoff and never enter the
-    in-the-money regression set.
-    """
-    def basis(state: PricingState, mask: np.ndarray, scale: float) -> np.ndarray:
-        x = np.asarray(state.spot)[mask] / scale
-        columns = [x ** k for k in range(degree + 1)]
-        for value in state.path_state.params.values():
-            arr = np.asarray(value)
-            if arr.dtype.kind != "f":
-                continue
-            a = arr[mask] / scale
-            columns += [a, a ** 2, a * x]
-        return np.column_stack(columns)
-    return basis
-
-
-class MonteCarloEngine(PricingEngine):
-    """
-    Monte Carlo pricer; early exercise handled by Longstaff-Schwartz (LSM).
-
-    Args:
-        n_paths: number of paths (positive integer).
-        n_steps: time steps per path (positive integer).
-        seed: optional seed for reproducibility.
-        poly_degree: degree of the polynomial-in-spot part of the LSM basis (>= 1).
-        basis: optional custom regression basis, `f(state, mask, scale) -> (n_itm, n_features)`.
-
-    Raises:
-        ValueError: on invalid arguments.
-    """
-
-    def __init__(self, n_paths: int, n_steps: int, seed: int | None = None,
-                 poly_degree: int = 2, basis: Callable[[PricingState, np.ndarray, float], np.ndarray] | None = None):
-        if not isinstance(n_paths, numbers.Integral) or n_paths <= 1:
-            raise ValueError("n_paths must be an integer >= 2")
-        if not isinstance(n_steps, numbers.Integral) or n_steps <= 0:
-            raise ValueError("n_steps must be a positive integer")
-        if not isinstance(poly_degree, numbers.Integral) or poly_degree < 1:
-            raise ValueError(f"poly_degree must be >= 1, got {poly_degree}")
-        self.n_paths = int(n_paths)
-        self.n_steps = int(n_steps)
-        self.seed = seed
-        self.poly_degree = int(poly_degree)
-        self.basis = basis or polynomial_basis(self.poly_degree)
-
-    def price(self, derivative: DerivativeContract, process: StochasticProcess,
-              initial_spot: float, market_data: MarketData) -> PricingResult:
-        started = time.perf_counter()
-        self.check_supported(derivative, process)
-        derivative.validate_grid(self.n_steps)
-
-        underlying = process.simulate_paths(
-            initial_spot=initial_spot, maturity=derivative.maturity,
-            n_steps=self.n_steps, n_paths=self.n_paths,
-            market_data=market_data, seed=self.seed,
-        )
-        paths = build_pricing_path(underlying, derivative.path_trackers)
-
-        dt = derivative.maturity / self.n_steps
-        discount = np.exp(-market_data.risk_free_rate * dt)
-
-        # `value` always holds the pathwise cashflow-to-go, in money of the
-        # step currently being processed. Maturity is always exercisable.
-        value = np.array(derivative.payoff(paths[-1]), dtype=float)
-
-        for i in range(self.n_steps - 1, 0, -1):
-            value = value * discount            # continuation, in step-i money
-            state = paths[i]
-            if not derivative.is_exercisable(state):
-                continue
-            exercise = np.asarray(derivative.payoff(state), dtype=float)
-            itm = exercise > 0.0
-            if not np.any(itm):
-                continue
-            features = self.basis(state, itm, float(initial_spot))
-            if features.shape[0] <= features.shape[1]:
-                continue                        # too few ITM paths to regress
-            coeffs, *_ = np.linalg.lstsq(features, value[itm], rcond=None)
-            continuation = features @ coeffs
-            exercise_now = exercise[itm] > continuation
-            idx = np.flatnonzero(itm)[exercise_now]
-            value[idx] = exercise[idx]
-
-        samples = value * discount              # PV at t=0, one per path
-        price = float(samples.mean())
-        if derivative.is_exercisable(paths[0]):  # immediate exercise at t=0
-            price = max(price, float(np.mean(derivative.payoff(paths[0]))))
-        std_error = float(samples.std(ddof=1) / np.sqrt(self.n_paths))
-
-        return PricingResult(
-            price=price, std_error=std_error,
-            runtime=time.perf_counter() - started,
-            metadata={"engine": "monte_carlo", "n_paths": self.n_paths,
-                      "n_steps": self.n_steps, "seed": self.seed},
-        )
-
-             
-class BinomialEngine(PricingEngine):
-    """
-    Cox-Ross-Rubinstein recombining tree for GBM, vectorised per level.
-
-    Supports European / Bermudan / American exercise on payoffs that depend on
-    the spot only. Path-dependent payoffs are REJECTED: a recombining tree keeps
-    no memory of the path that led to a node, so a tracker value at a node would
-    reflect an arbitrary single path and silently misprice (see README, "Why
-    binomial trees need specific code for path tracking").
-
-    Args:
-        tree_depth: number of tree steps (positive integer).
-    """
-
-    def __init__(self, tree_depth: int):
-        if not isinstance(tree_depth, numbers.Integral) or tree_depth <= 0:
-            raise ValueError("tree_depth must be a positive integer")
-        self.tree_depth = int(tree_depth)
-
-    def check_supported(self, derivative: DerivativeContract,
-                        process: StochasticProcess) -> None:
-        if not isinstance(process, GeometricBrownianMotion):
-            raise NotImplementedError("BinomialEngine assumes a GBM process.")
-        if derivative.is_path_dependent:
-            raise NotImplementedError(
-                f"BinomialEngine cannot price path-dependent payoffs "
-                f"(requires trackers {sorted(derivative.required_path_trackers)}): "
-                f"use MonteCarloEngine, or a non-recombining / augmented-state tree."
-            )
-
-    def price(self, derivative: DerivativeContract, process: StochasticProcess,
-              initial_spot: float, market_data: MarketData) -> PricingResult:
-        started = time.perf_counter()
-        self.check_supported(derivative, process)
-        n = self.tree_depth
-        derivative.validate_grid(n)
-
-        r, q = market_data.risk_free_rate, market_data.dividend_yield
-        dt = derivative.maturity / n
-        u = np.exp(process.volatility * np.sqrt(dt))
-        d = 1.0 / u
-        p = (np.exp((r - q) * dt) - d) / (u - d)
-        if not 0.0 < p < 1.0:
-            raise ValueError(
-                f"risk-neutral probability p={p:.4f} is outside (0, 1): "
-                f"increase tree_depth or check volatility vs (r - q)."
-            )
-        discount = np.exp(-r * dt)
-        no_path_state = PathDependentState()
-
-        def state_at(level: int) -> PricingState:
-            # node k at level i has spot S0 * u^(2k - i)
-            spots = initial_spot * u ** (2.0 * np.arange(level + 1) - level)
-            return PricingState(UnderlyingState(time=level * dt, spot=spots), no_path_state)
-
-        values = np.asarray(derivative.payoff(state_at(n)), dtype=float)  # maturity
-        for level in range(n - 1, -1, -1):
-            values = discount * (p * values[1:] + (1.0 - p) * values[:-1])
-            state = state_at(level)
-            if derivative.is_exercisable(state):      # once per level, not per node
-                values = np.maximum(values, derivative.payoff(state))
-
-        return PricingResult(
-            price=float(values[0]), std_error=None,
-            runtime=time.perf_counter() - started,
-            metadata={"engine": "binomial_crr", "tree_depth": n},
-        )
-
 
 class FiniteDifferenceEngine(PricingEngine):
     """Theta-scheme finite-difference engine for vanilla options under GBM.
 
     The spatial grid may be uniform in spot or log-spot. ``theta`` selects
-    explicit Euler (0), Crank–Nicolson (0.5), or implicit Euler (1).
+    explicit Euler (0), Crank-Nicolson (0.5), or implicit Euler (1).
 
     This engine supports vanilla European, American, and grid-aligned
     Bermudan exercise. It does not support path-dependent payoffs.
+
+    Args:
+        n_space: number of space intervals (integer >= 3).
+        n_time: number of time steps (positive integer).
+        theta: time-stepping weight in [0, 1].
+        grid_type: 'spot' (uniform in S) or 'log' (uniform in log S).
+        s_max: upper spot bound of a 'spot' grid. Default: 3 * max(S0, strike).
+        log_width_sigma: half-width of a 'log' grid, in standard deviations of
+            the log-spot at maturity.
+ 
+    Raises:
+        ValueError: on invalid arguments.
     """
 
     def __init__(
