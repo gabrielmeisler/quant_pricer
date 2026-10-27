@@ -1714,6 +1714,10 @@ def render_pricing_lab() -> None:
                 ):
                     open_pricing_editor()
 
+        def dismiss_pricing_editor() -> None:
+            st.session_state.valuation_editor_open = False
+            st.session_state.valuation_editing_run_id = None
+
         if st.session_state.get("valuation_editor_open", False):
             engine_descriptions = {
                 "Monte Carlo (LSM)": (
@@ -1730,7 +1734,11 @@ def render_pricing_lab() -> None:
                 ),
             }
 
-            @st.dialog("Configure a pricing run", width="large")
+            @st.dialog(
+                "Configure a pricing run",
+                width="large",
+                on_dismiss=dismiss_pricing_editor,
+            )
             def render_pricing_editor() -> None:
                 editing_run_id = st.session_state.valuation_editing_run_id
                 editing_record = next(
