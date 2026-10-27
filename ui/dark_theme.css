@@ -93,30 +93,30 @@
         color: #91cfc2 !important;
     }
 
-    .st-key-app-nav-theme [data-testid="stButtonGroup"] {
-        background: #ffffff !important;
-        border: 1px solid #dfe5e9 !important;
+    .stApp .st-key-app-nav-theme [data-testid="stButtonGroup"] {
+        background: #1b1e25 !important;
+        border: 1px solid #393d47 !important;
         border-radius: 999px !important;
         padding: 3px !important;
     }
 
-    .st-key-app-nav-theme [data-testid="stButtonGroup"] button {
+    .stApp .st-key-app-nav-theme [data-testid="stButtonGroup"] button {
         min-height: 2rem !important;
         border: 0 !important;
         border-radius: 999px !important;
         background: transparent !important;
-        color: #526574 !important;
+        color: #aeb3bb !important;
         font-size: 0.75rem !important;
     }
 
-    .st-key-app-nav-theme [data-testid="stButtonGroup"]
+    .stApp .st-key-app-nav-theme [data-testid="stButtonGroup"]
     button[data-selected="true"] {
-        background: #e8f2f1 !important;
-        color: #176b68 !important;
-        box-shadow: inset 0 0 0 1px #c5d9d5 !important;
+        background: #1d302c !important;
+        color: #91cfc2 !important;
+        box-shadow: inset 0 0 0 1px #31564e !important;
     }
 
-    .st-key-app-nav-theme [data-testid="stButtonGroup"] button p {
+    .stApp .st-key-app-nav-theme [data-testid="stButtonGroup"] button p {
         color: inherit !important;
     }
 
@@ -152,25 +152,12 @@
         color: inherit !important;
     }
 
-    .st-key-landing-suggestions {
-        padding: 8px 0;
-        margin: 8px 0 20px;
-        width: calc(100% - 79px);
-        box-sizing: border-box;
-        transform: translateX(79px);
-    }
-
     .landing-learning-title {
         color: #91cfc2;
-        font: 500 0.9rem/1.4 Georgia, "Times New Roman", serif;
-        letter-spacing: 0.01em;
-        margin: 0 0 32px;
     }
 
     .st-key-landing-implementation {
         border-top: 1px solid #30343d;
-        margin-top: 22px;
-        padding-top: 18px;
     }
 
     .landing-submenu-heading {
@@ -913,6 +900,37 @@
         border-color: #30343d !important;
     }
 
+    .landing-title {
+        color: #e9e9e7 !important;
+    }
+
+    .landing-nav {
+        border-bottom-color: #30343d !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.landing-row-number) {
+        border-top-color: #30343d !important;
+    }
+
+    .landing-suggestions-mark {
+        background: #1d302c !important;
+        border-color: #31564e !important;
+        color: #91cfc2 !important;
+    }
+
+    .landing-about-rule {
+        background: #82c5b8 !important;
+    }
+
+    .landing-footer {
+        border-top-color: #30343d !important;
+        color: #7d848e !important;
+    }
+
+    .landing-footer-attribution {
+        color: #7d848e !important;
+    }
+
     .interactive-lab-heading {
         color: #e9e9e7 !important;
     }
@@ -993,5 +1011,19 @@
         .st-key-builder-open-market {
             --builder-card-height: min(910px, calc(100vh - 222px));
             --builder-card-height: min(910px, calc(100dvh - 222px));
+        }
+    }
+
+    @media (max-width: 700px) {
+        .st-key-theory-european-call .theory-price-result,
+        .st-key-theory-dividend-european-call .theory-price-result,
+        .st-key-theory-put-european-put .theory-price-result {
+            border-top-color: #31564e !important;
+        }
+
+        .st-key-theory-american-call .theory-price-result,
+        .st-key-theory-dividend-american-call .theory-price-result,
+        .st-key-theory-put-american-put .theory-price-result {
+            border-top-color: #594c61 !important;
         }
     }

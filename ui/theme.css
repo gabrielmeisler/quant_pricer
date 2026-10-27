@@ -139,30 +139,30 @@
         font-size: 0.75rem !important;
     }
 
-    .stApp .st-key-app-nav-theme [data-testid="stButtonGroup"] {
-        background: #1b1e25 !important;
-        border: 1px solid #393d47 !important;
+    .st-key-app-nav-theme [data-testid="stButtonGroup"] {
+        background: #ffffff !important;
+        border: 1px solid #dfe5e9 !important;
         border-radius: 999px !important;
         padding: 3px !important;
     }
 
-    .stApp .st-key-app-nav-theme [data-testid="stButtonGroup"] button {
+    .st-key-app-nav-theme [data-testid="stButtonGroup"] button {
         min-height: 2rem !important;
         border: 0 !important;
         border-radius: 999px !important;
         background: transparent !important;
-        color: #aeb3bb !important;
+        color: #526574 !important;
         font-size: 0.75rem !important;
     }
 
-    .stApp .st-key-app-nav-theme [data-testid="stButtonGroup"]
+    .st-key-app-nav-theme [data-testid="stButtonGroup"]
     button[data-selected="true"] {
-        background: #1d302c !important;
-        color: #91cfc2 !important;
-        box-shadow: inset 0 0 0 1px #31564e !important;
+        background: #e8f2f1 !important;
+        color: #176b68 !important;
+        box-shadow: inset 0 0 0 1px #c5d9d5 !important;
     }
 
-    .stApp .st-key-app-nav-theme [data-testid="stButtonGroup"] button p {
+    .st-key-app-nav-theme [data-testid="stButtonGroup"] button p {
         color: inherit !important;
     }
 
@@ -2337,6 +2337,35 @@
             margin-top: 1.35rem !important;
         }
 
+        .st-key-applied-theory-page .katex-display {
+            position: relative;
+            box-sizing: border-box;
+            width: 100%;
+            margin: 0.9rem auto !important;
+            padding: 0.2rem 0.35rem 1.5rem;
+            font-size: 0.8rem;
+            text-align: center;
+            scroll-padding-inline: 0.35rem;
+            overscroll-behavior-x: contain;
+        }
+
+        .st-key-applied-theory-page .katex-display > .katex,
+        .st-key-applied-theory-page .katex-display > .katex > .katex-html {
+            position: static !important;
+        }
+
+        .st-key-applied-theory-page .katex-display > .katex > .katex-html > .tag {
+            position: absolute !important;
+            top: auto !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            left: auto !important;
+            width: auto !important;
+            height: 1.2em !important;
+            line-height: 1.2 !important;
+            text-align: right;
+        }
+
         .st-key-applied-theory-page > div[data-testid="stVerticalBlock"] > div[data-testid="stElementContainer"] p {
             font-size: 0.94rem;
             line-height: 1.7;
@@ -2405,6 +2434,41 @@
         .theory-contract-terms {
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 9px 12px;
+        }
+
+        .st-key-theory-european-call [data-testid="stHorizontalBlock"],
+        .st-key-theory-american-call [data-testid="stHorizontalBlock"],
+        .st-key-theory-dividend-european-call [data-testid="stHorizontalBlock"],
+        .st-key-theory-dividend-american-call [data-testid="stHorizontalBlock"],
+        .st-key-theory-put-european-put [data-testid="stHorizontalBlock"],
+        .st-key-theory-put-american-put [data-testid="stHorizontalBlock"] {
+            row-gap: 12px !important;
+        }
+
+        .st-key-applied-theory-page [data-testid="stMarkdownContainer"]:has(.theory-contract-summary, .theory-price-result) {
+            margin-bottom: 0 !important;
+        }
+
+        [class*="st-key-theory-"][class*="-button-slot"] {
+            min-height: 0;
+            transform: none;
+        }
+
+        [class*="st-key-theory-"][class*="-button-slot"] > [data-testid="stElementContainer"]:has([data-testid="stMarkdownContainer"]:empty) {
+            display: none;
+        }
+
+        .theory-price-result {
+            margin-top: 0;
+            border-left: 0;
+            border-top: 2px solid #c5d9d5;
+            text-align: center;
+        }
+
+        .st-key-theory-american-call .theory-price-result,
+        .st-key-theory-dividend-american-call .theory-price-result,
+        .st-key-theory-put-american-put .theory-price-result {
+            border-top-color: #d6c9da;
         }
 
         .qp-product-matrix th {
