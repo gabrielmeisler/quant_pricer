@@ -173,7 +173,7 @@ def render_pricing_lab() -> None:
             "builder_ex_style": "European",
             "builder_maturity": 1.0,
             "builder_berm_freq": "Quarterly",
-            "builder_vol": 0.20,
+            "builder_vol": 0.02,
             "builder_r": 0.05,
             "builder_q": 0.01,
             "builder_stage": 0,
@@ -319,6 +319,15 @@ def render_pricing_lab() -> None:
         )
 
         if builder_stage == 0:
+            for key in (
+                "builder_payoff_type",
+                "builder_opt_kind",
+                "builder_spot",
+                "builder_strike",
+                "builder_barrier",
+                "builder_cash",
+            ):
+                st.session_state[f"{key}_input"] = st.session_state[key]
             with payoff_column, st.container(key="builder-active-payoff"):
                 st.markdown("### 01  Payoff structure")
                 payoff_type = st.selectbox(
@@ -565,6 +574,12 @@ def render_pricing_lab() -> None:
                     st.rerun()
 
         if builder_stage == 1:
+            for key in (
+                "builder_ex_style",
+                "builder_maturity",
+                "builder_berm_freq",
+            ):
+                st.session_state[f"{key}_input"] = st.session_state[key]
             with exercise_column, st.container(key="builder-active-exercise"):
                 st.markdown("### 02  Exercise rights")
                 exercise_type = st.selectbox(
@@ -849,6 +864,9 @@ def render_pricing_lab() -> None:
         if builder_stage == 2:
             with market_column, st.container(key="builder-active-market"):
                 st.markdown("### 03  Market assumptions")
+                st.session_state.builder_vol_input = st.session_state.builder_vol
+                st.session_state.builder_r_input = st.session_state.builder_r
+                st.session_state.builder_q_input = st.session_state.builder_q
                 market_inputs = st.columns(3)
                 with market_inputs[0]:
                     volatility = st.number_input(
