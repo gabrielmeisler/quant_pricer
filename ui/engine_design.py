@@ -752,13 +752,6 @@ print(f"Price: {result.price:.4f} (±{result.std_error:.4f})")"""
     )
     package_root = Path(__file__).resolve().parent.parent
     source_modules = (
-        "ui/application.py",
-        "ui/home.py",
-        "ui/navigation.py",
-        "ui/theme.py",
-        "ui/pricing_lab.py",
-        "ui/engine_design.py",
-        "ui/applied_theory.py",
         "pricing/contract.py",
         "pricing/payoff.py",
         "pricing/exercise_rights.py",
